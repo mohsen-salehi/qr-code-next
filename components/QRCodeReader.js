@@ -1,52 +1,49 @@
 "use client"
-import React, { useEffect, useRef, useState } from 'react';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import React, { useEffect, useRef } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 
-const QRCodeReader = () => {
-  const [result, setResult] = useState('');
-  const videoRef = useRef(null);
+const QrCodeScanner = () => {
+  const qrCodeRef = useRef(null);
 
   useEffect(() => {
-    const codeReader = new BrowserMultiFormatReader();
+    if (qrCodeRef.current) {
+      const html5QrCode = new Html5Qrcode("qr-reader");
 
-    const startScanner = async () => {
-      try {
-        const videoInputDevices = await codeReader.listVideoInputDevices();
-        if (videoInputDevices.length > 0) {
-          const firstDeviceId = videoInputDevices[0].deviceId;
-          codeReader.decodeFromVideoDevice(firstDeviceId, videoRef.current, (result, error) => {
-            if (result) {
-              setResult(result.text);
-            }
-            if (error) {
-              console.error(error);
-            }
-          });
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250,
+        },
+        (decodedText, decodedResult) => {
+          console.log(`QR Code scanned: ${decodedText}`);
+        },
+        (errorMessage) => {
+          console.error(`QR Code scan error: ${errorMessage}`);
         }
-      } catch (error) {
-        console.error(error);
-      }
-    };
+      ).catch((err) => {
+        console.error(`Failed to start QR code scanning: ${err}`);
+      });
 
-    startScanner();
-
-    return () => {
-      if (videoRef.current) {
-        const stream = videoRef.current.srcObject;
-        if (stream) {
-          const tracks = stream.getTracks();
-          tracks.forEach(track => track.stop());
-        }
-      }
-    };
+      return () => {
+        html5QrCode.stop().catch((err) => {
+          console.error(`Failed to stop QR code scanning: ${err}`);
+        });
+      };
+    }
   }, []);
 
   return (
-    <div>
-      <video ref={videoRef} style={{ width: '100%' }} />
-      {result && <p>Result: {result}</p>}
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <h1 className="text-2xl font-bold mb-4 text-gray-800">Scan QR Code</h1>
+      <div
+        id="qr-reader"
+        ref={qrCodeRef}
+        className="w-64 h-64 border-4 border-blue-500 rounded-lg shadow-lg"
+      ></div>
+      <p className="mt-4 text-gray-600">Align the QR code within the frame to scan.</p>
     </div>
   );
 };
 
-export default QRCodeReader;
+export default QrCodeScanner;
